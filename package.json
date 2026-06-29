@@ -1,0 +1,11 @@
+{
+  "name": "bullscann-functions",
+  "version": "7.1.0",
+  "type": "module",
+  "private": true,
+  "description": "BullScann data + compute layer (Netlify Functions)",
+  "dependencies": {
+    "@tastytrade/api": "^7.0.0",
+    "ws": "^8.18.0"
+  }
+}
