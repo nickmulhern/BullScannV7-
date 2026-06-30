@@ -112,6 +112,8 @@
   button.ghost { background:var(--surface2); border:1px solid var(--line); color:var(--text);
     font-family:'Inter'; font-weight:500; font-size:13px; padding:8px 14px; border-radius:8px; cursor:pointer; }
   button.ghost:hover { border-color:var(--accent); color:var(--accent); }
+  button.ghost.desk { border-color:rgba(110,168,255,.35); color:var(--accent); }
+  button.ghost.desk:hover { border-color:var(--accent); background:rgba(110,168,255,.08); }
   .opts-note { margin-top:12px; font-size:12px; color:var(--faint); font-style:italic; }
 
   /* ---- states ---- */
@@ -123,6 +125,9 @@
   .errbox { background:var(--short-dim); border:1px solid rgba(236,90,82,.4); color:var(--text);
     padding:16px; border-radius:10px; }
   .errbox b { color:var(--short); }
+  .warnbox { background:var(--flat-dim); border:1px solid rgba(224,168,62,.4); color:var(--text);
+    padding:14px 16px; border-radius:10px; font-size:13px; }
+  .warnbox b { color:var(--flat); }
   .muted-card { opacity:.5; }
 
   /* ---- prompts panel ---- */
@@ -134,7 +139,50 @@
   .pblock p { color:var(--muted); font-size:12px; margin-bottom:10px; }
   .pblock textarea { width:100%; min-height:130px; background:var(--ink); border:1px solid var(--line);
     color:var(--text); font-family:'JetBrains Mono'; font-size:12px; padding:11px; border-radius:8px; resize:vertical; }
-  .pblock .actions { margin-top:10px; display:flex; gap:10px; }
+  .pblock .actions { margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+
+  /* ---- trade desk panel ---- */
+  .tradedesk { display:none; }
+  .tradedesk.show { display:block; }
+
+  .td-status { background:var(--surface); border:1px solid var(--line); border-radius:11px;
+    padding:14px 18px; margin-bottom:16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:13px; }
+  .td-status .fw-ok { color:var(--long); font-weight:600; }
+  .td-status .fw-stale { color:var(--flat); font-weight:600; }
+  .td-status .fw-missing { color:var(--short); font-weight:600; }
+  .td-status .fw-detail { color:var(--muted); }
+
+  .td-queue { background:var(--surface); border:1px solid var(--line); border-radius:11px;
+    padding:16px 18px; margin-bottom:16px; }
+  .td-queue h3 { font-size:14px; font-family:'Space Grotesk'; margin-bottom:12px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.06em; }
+  .td-empty { color:var(--faint); font-size:13px; font-style:italic; }
+
+  .td-item { background:var(--ink); border:1px solid var(--line); border-radius:9px;
+    padding:14px 16px; margin-bottom:10px; }
+  .td-item:last-child { margin-bottom:0; }
+  .td-item-header { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+  .td-sym { font-family:'Space Grotesk'; font-weight:700; font-size:18px; }
+  .td-mode { font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+    background:var(--surface2); border:1px solid var(--line); padding:3px 8px; border-radius:5px; color:var(--accent); }
+  .td-item-actions { display:flex; gap:8px; flex-wrap:wrap; }
+
+  .td-result { margin-top:12px; border-top:1px solid var(--line); padding-top:12px; display:none; }
+  .td-result.show { display:block; }
+  .td-ticket { background:var(--surface2); border:1px solid var(--line); border-radius:9px;
+    padding:14px 16px; font-family:'JetBrains Mono'; font-size:12px; line-height:1.7;
+    white-space:pre-wrap; color:var(--text); }
+  .td-ticket .go    { color:var(--long); font-weight:700; }
+  .td-ticket .nogo  { color:var(--short); font-weight:700; }
+  .td-ticket .cond  { color:var(--flat); font-weight:700; }
+
+  .td-expand { margin-top:10px; }
+  .td-personas { display:none; background:var(--ink); border:1px solid var(--line); border-radius:9px;
+    padding:14px; font-size:12px; line-height:1.7; white-space:pre-wrap; color:var(--muted);
+    margin-top:8px; max-height:400px; overflow-y:auto; }
+  .td-personas.show { display:block; }
+
+  /* ---- toast ---- */
   .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--surface2);
     border:1px solid var(--accent); color:var(--text); padding:11px 20px; border-radius:9px; font-size:14px;
     opacity:0; pointer-events:none; transition:opacity .2s; z-index:50; }
@@ -150,10 +198,12 @@
   <div class="tabs">
     <button class="tab active" data-view="scan">Scan</button>
     <button class="tab" data-view="prompts">Prompts</button>
+    <button class="tab" data-view="tradedesk">Trade Desk</button>
   </div>
 </header>
 
 <div class="wrap">
+
   <!-- SCAN VIEW -->
   <div class="results" id="resultsView">
     <div class="controls">
@@ -202,40 +252,94 @@
     <div class="meta"><span>Your prompt system. Paste each prompt once — it saves in this browser. Use Copy to grab it for a fresh scan session.</span></div>
     <div id="promptBlocks"></div>
   </div>
+
+  <!-- TRADE DESK VIEW -->
+  <div class="tradedesk" id="tradedeskView">
+
+    <div class="td-status" id="tdFirewallStatus">
+      <!-- populated by checkFirewallStatus() -->
+    </div>
+
+    <div class="td-queue">
+      <h3>Trade Queue</h3>
+      <div id="tdQueue"><p class="td-empty">No setups queued. Run a scan, open a card, and click "Send to Trade Desk" on any graded setup.</p></div>
+    </div>
+
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const FN = "/.netlify/functions/scan";
+const SCAN_FN  = "/.netlify/functions/scan";
+const DESK_FN  = "/.netlify/functions/trade_desk";
+
 let currentTF = "daily";
-let lastData = null;
+let lastData  = null;
+
+// Trade desk queue: array of { sym, mode, scanBlock, status, result }
+let tdQueue = [];
 
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
 const fmt = n => (n==null||Number.isNaN(n)) ? "—" : n;
-function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); }
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1800); }
 function store(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 function load(k,d){ try{ return localStorage.getItem(k) ?? d; }catch(e){ return d; } }
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+/* ---------- firewall freshness gate ---------- */
+function firewallIsValid() {
+  const ts = load("bs_prompt_firewall_ts", null);
+  if (!ts) return { valid: false, reason: "missing" };
+  const saved = new Date(parseInt(ts));
+  const now = new Date();
+  const sameDay = saved.toDateString() === now.toDateString();
+  const within8hrs = (now - saved) < 8 * 60 * 60 * 1000;
+  if (!sameDay) return { valid: false, reason: "stale-day", saved };
+  if (!within8hrs) return { valid: false, reason: "stale-8hr", saved };
+  return { valid: true, saved };
+}
+
+function checkFirewallStatus() {
+  const el = $("#tdFirewallStatus");
+  const { valid, reason, saved } = firewallIsValid();
+  const fw = load("bs_prompt_firewall", "").trim();
+  const timeStr = saved ? saved.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + " · " + saved.toLocaleDateString() : "";
+
+  if (!fw) {
+    el.innerHTML = `<span class="fw-missing">⚠ No Firewall data</span><span class="fw-detail">Go to Prompts, paste your Prompt A output and Save before sending to Trade Desk.</span>`;
+  } else if (!valid) {
+    const msg = reason === "stale-day"
+      ? `Firewall data is from a previous session (${timeStr}). Run and save Prompt A for today before sending.`
+      : `Firewall data is over 8 hours old (${timeStr}). Refresh Prompt A for this session.`;
+    el.innerHTML = `<span class="fw-stale">⚠ Stale Firewall</span><span class="fw-detail">${escapeHtml(msg)}</span>`;
+  } else {
+    el.innerHTML = `<span class="fw-ok">✓ Firewall valid</span><span class="fw-detail">Saved ${escapeHtml(timeStr)} — ready for Trade Desk.</span>`;
+  }
+}
 
 /* ---------- view switching ---------- */
-document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
-  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
   t.classList.add("active");
-  const v=t.dataset.view;
-  $("#resultsView").classList.toggle("hide", v!=="scan");
-  $("#promptsView").classList.toggle("show", v==="prompts");
+  const v = t.dataset.view;
+  $("#resultsView").classList.toggle("hide",        v !== "scan");
+  $("#promptsView").classList.toggle("show",        v === "prompts");
+  $("#tradedeskView").classList.toggle("show",      v === "tradedesk");
+  if (v === "tradedesk") checkFirewallStatus();
 }));
 
 /* ---------- timeframe ---------- */
-document.querySelectorAll(".tf button").forEach(b=>b.addEventListener("click",()=>{
-  document.querySelectorAll(".tf button").forEach(x=>x.classList.remove("on"));
-  b.classList.add("on"); currentTF=b.dataset.tf; render();
+document.querySelectorAll(".tf button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".tf button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); currentTF = b.dataset.tf; render();
 }));
 
 /* ---------- restore last settings ---------- */
-$("#regime").value = load("bs_regime","neutral");
-$("#news").value = load("bs_news","clean");
+$("#regime").value  = load("bs_regime","neutral");
+$("#news").value    = load("bs_news","clean");
 $("#exclude").value = load("bs_exclude","");
 
 /* ---------- run scan ---------- */
@@ -250,13 +354,13 @@ async function runScan(){
   const params=new URLSearchParams({regime,news});
   if(exclude) params.set("exclude",exclude);
   try{
-    const res=await fetch(`${FN}?${params}`);
-    if(!res.ok){ throw new Error(`Server returned ${res.status}. ${await res.text().catch(()=> "")}`); }
+    const res=await fetch(`${SCAN_FN}?${params}`);
+    if(!res.ok){ throw new Error(`Server returned ${res.status}. ${await res.text().catch(()=>"")}`); }
     const data=await res.json();
     if(data.error){ throw new Error(data.error); }
     lastData=data; renderMeta(data); $("#tfWrap").hidden=false; render();
   }catch(err){
-    $("#output").innerHTML = `<div class="errbox"><b>Scan didn't complete.</b><br>${escapeHtml(String(err.message||err))}<br><br>If this is a credentials or streaming error, check the function logs in Netlify. If you're viewing this outside your deployed site, the scan endpoint isn't reachable here.</div>`;
+    $("#output").innerHTML = `<div class="errbox"><b>Scan didn't complete.</b><br>${escapeHtml(String(err.message||err))}<br><br>If this is a credentials or streaming error, check the function logs in Netlify.</div>`;
   }finally{ btn.disabled=false; btn.textContent="Run scan"; }
 }
 
@@ -274,10 +378,8 @@ function render(){
     return { sym, struct:(s&&!s.error)?s:null, err:(s&&s.error)?s.error:null,
              copy:currentTF==="daily"?r.copyDaily:r.copyFiveMin };
   });
-  // rank: tradeable by score desc, then no-trade, then errors
   const rank=x=>{ if(x.err) return -1000; const d=x.struct?.setup?.direction; if(d==="none") return -100; return x.struct?.setup?.score ?? -50; };
   rows.sort((a,b)=>rank(b)-rank(a));
-
   const out=$("#output"); out.innerHTML="";
   rows.forEach(row=>out.appendChild(card(row)));
 }
@@ -296,7 +398,7 @@ function card(row){
   const s=row.struct, set=s.setup;
   const dir=set.direction, dc=dirClass(dir);
   const gradeTxt = dir==="none" ? "—" : set.grade;
-  const dirTxt = dir==="none" ? "no-trade" : dir;
+  const dirTxt   = dir==="none" ? "no-trade" : dir;
   const scoreTxt = dir==="none" ? "" : `${set.score}/100`;
 
   el.innerHTML=`
@@ -309,16 +411,25 @@ function card(row){
       <div class="row1"><span class="sym">${row.sym}</span><span class="px mono">$${fmt(s.price)}</span><span class="chev" style="margin-left:auto">▸ details</span></div>
       <div class="verdict">${verdictLine(s)}</div>
     </div>`;
+
   const detail=document.createElement("div"); detail.className="detail";
-  detail.innerHTML=detailHtml(s);
+  detail.innerHTML=detailHtml(row, s);
   el.appendChild(detail);
 
   const bodyEl=el.querySelector(".body"); const chev=el.querySelector(".chev");
   bodyEl.addEventListener("click",()=>{ const open=detail.classList.toggle("open"); chev.textContent=open?"▾ details":"▸ details"; });
-  // copy buttons
-  detail.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",e=>{
+
+  // copy block
+  detail.querySelector("[data-copy]")?.addEventListener("click", e=>{
     e.stopPropagation(); navigator.clipboard.writeText(row.copy||"").then(()=>toast(`Copied ${row.sym} block`));
+  });
+
+  // send to trade desk buttons
+  detail.querySelectorAll("[data-desk]").forEach(b=>b.addEventListener("click", e=>{
+    e.stopPropagation();
+    sendToDesk(row.sym, b.dataset.desk, row.copy);
   }));
+
   return el;
 }
 
@@ -329,7 +440,7 @@ function verdictLine(s){
   return `${pill}${revTxt} ${escapeHtml(s.structure)} · RSI ${fmt(s.rsi)} · ${s.ema.stack}`;
 }
 
-function detailHtml(s){
+function detailHtml(row, s){
   const set=s.setup, lv=s.horizontalLevels;
   const zones=(lv.allZones||[]).map(z=>{
     const cls = z.level>s.price ? "res" : "sup";
@@ -337,14 +448,17 @@ function detailHtml(s){
   }).join("");
   const sup=lv.nearestSupport?`${lv.nearestSupport.level} (${lv.nearestSupport.touches}×)`:"none below";
   const res=lv.nearestResistance?`${lv.nearestResistance.level} (${lv.nearestResistance.touches}×)`:"none above";
-
   const riskFlags=(set.risk?.opposingFlags||[]);
   const riskHtml = riskFlags.length
     ? `<span class="flag">⚠ ${riskFlags.join(" · ")}</span>`
     : `<span class="ok">✓ no opposing signals</span>`;
-
   const bk=set.buckets;
   const bucketHtml = bk ? `Trend ${bk.trend} · Momentum ${bk.momentum} · Volume ${bk.volume} · Level ${bk.level} · Regime ${bk.regime}${bk.reversalPenalty?` · RevPen ${bk.reversalPenalty}`:""}${bk.newsPenalty?` · NewsPen ${bk.newsPenalty}`:""}` : "—";
+
+  // Only show Trade Desk buttons if there's a directional thesis
+  const deskButtons = set.direction !== "none" ? `
+    <button class="ghost desk" data-desk="short">→ Trade Desk · Short Term (B)</button>
+    <button class="ghost desk" data-desk="swing">→ Trade Desk · Swing (C)</button>` : "";
 
   return `
     <div class="grid">
@@ -364,35 +478,196 @@ function detailHtml(s){
     </div>
     <div class="risk">Risk profile: ${riskHtml}</div>
     <div class="risk" style="color:var(--muted)">Score buckets: ${bucketHtml}</div>
-    <div class="opts-note">Options bucket: not connected — ranking on technicals (normalizedCore). Wire the options chain to activate IV/liquidity scoring.</div>
+    <div class="opts-note">Options bucket: not connected — ranking on technicals (normalizedCore).</div>
     <div class="copyrow">
       <button class="ghost" data-copy>Copy ${currentTF==="daily"?"Swing-Long":"Swing-Short"} block</button>
+      ${deskButtons}
     </div>`;
 }
 
-function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+/* ---------- send to trade desk ---------- */
+function sendToDesk(sym, mode, scanBlock) {
+  // Check firewall validity first
+  const { valid, reason, saved } = firewallIsValid();
+  const fw = load("bs_prompt_firewall","").trim();
+
+  if (!fw) {
+    toast("No Firewall data — save Prompt A first");
+    return;
+  }
+  if (!valid) {
+    const msg = reason === "stale-day" ? "Firewall is from a previous session" : "Firewall is over 8 hours old";
+    toast(`${msg} — run Prompt A first`);
+    return;
+  }
+  if (!scanBlock) {
+    toast("No scan block for this ticker");
+    return;
+  }
+
+  // Check for duplicate (same sym + mode already queued)
+  const exists = tdQueue.find(i => i.sym === sym && i.mode === mode);
+  if (exists) {
+    toast(`${sym} ${mode} already in queue — switch to Trade Desk tab`);
+    // Switch to trade desk tab
+    document.querySelector('[data-view="tradedesk"]').click();
+    return;
+  }
+
+  // Add to queue
+  tdQueue.push({ sym, mode, scanBlock, status: "pending", result: null });
+  renderTdQueue();
+  toast(`${sym} → Trade Desk`);
+
+  // Auto-switch to trade desk tab
+  document.querySelector('[data-view="tradedesk"]').click();
+}
+
+/* ---------- render trade desk queue ---------- */
+function renderTdQueue() {
+  const el = $("#tdQueue");
+  if (!tdQueue.length) {
+    el.innerHTML = `<p class="td-empty">No setups queued. Run a scan, open a card, and click "Send to Trade Desk" on any graded setup.</p>`;
+    return;
+  }
+  el.innerHTML = "";
+  tdQueue.forEach((item, idx) => {
+    const div = document.createElement("div");
+    div.className = "td-item";
+    div.id = `tditem-${idx}`;
+    const modeLabel = item.mode === "short" ? "Prompt B · Short Term" : "Prompt C · Swing";
+
+    div.innerHTML = `
+      <div class="td-item-header">
+        <span class="td-sym">${item.sym}</span>
+        <span class="td-mode">${modeLabel}</span>
+        <div class="td-item-actions" style="margin-left:auto">
+          ${item.status === "pending" ? `<button class="primary" style="font-size:13px;padding:8px 16px" data-run="${idx}">Run Trade Desk</button>` : ""}
+          ${item.status === "loading" ? `<button class="primary" style="font-size:13px;padding:8px 16px" disabled>Running…</button>` : ""}
+          ${item.status === "done" || item.status === "error" ? `<button class="ghost" data-remove="${idx}">Remove</button>` : ""}
+        </div>
+      </div>
+      <div class="td-result ${item.status === "done" || item.status === "error" ? "show" : ""}" id="tdresult-${idx}">
+        ${item.status === "done" ? renderTicket(item.result) : ""}
+        ${item.status === "error" ? `<div class="errbox"><b>Error.</b> ${escapeHtml(item.error)}</div>` : ""}
+      </div>`;
+
+    div.querySelector("[data-run]")?.addEventListener("click", () => runDesk(idx));
+    div.querySelector("[data-remove]")?.addEventListener("click", () => {
+      tdQueue.splice(idx, 1); renderTdQueue();
+    });
+
+    // Toggle full personas
+    div.querySelector("[data-personas]")?.addEventListener("click", e => {
+      const panel = div.querySelector(".td-personas");
+      if (panel) panel.classList.toggle("show");
+      e.target.textContent = e.target.textContent.includes("Show") ? "Hide full analysis" : "Show full analysis";
+    });
+
+    el.appendChild(div);
+  });
+}
+
+function renderTicket(result) {
+  if (!result) return "";
+  // Colorize GO / NO-GO / CONDITIONAL in ticket text
+  const ticketHtml = escapeHtml(result.ticket)
+    .replace(/\bGO\b(?!\s*\/)/g, '<span class="go">GO</span>')
+    .replace(/NO-GO/g, '<span class="nogo">NO-GO</span>')
+    .replace(/CONDITIONAL/g, '<span class="cond">CONDITIONAL</span>');
+
+  const personasText = [
+    result.personas?.trader || "",
+    result.personas?.riskDesk || "",
+    result.personas?.tradeMaster || "",
+  ].filter(Boolean).join("\n\n---\n\n");
+
+  return `
+    <div class="td-ticket">${ticketHtml}</div>
+    ${personasText ? `
+    <div class="td-expand">
+      <button class="ghost" style="font-size:12px;margin-top:8px" data-personas>Show full analysis</button>
+      <div class="td-personas">${escapeHtml(personasText)}</div>
+    </div>` : ""}`;
+}
+
+/* ---------- run trade desk call ---------- */
+async function runDesk(idx) {
+  const item = tdQueue[idx];
+  if (!item) return;
+
+  const { valid } = firewallIsValid();
+  const fw = load("bs_prompt_firewall","").trim();
+  if (!fw || !valid) {
+    toast("Firewall data stale or missing — run Prompt A first");
+    checkFirewallStatus();
+    return;
+  }
+
+  item.status = "loading";
+  renderTdQueue();
+
+  try {
+    const res = await fetch(DESK_FN, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ticker: item.sym,
+        mode: item.mode,
+        firewallOutput: fw,
+        scanBlock: item.scanBlock,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || `Server ${res.status}`);
+
+    item.status = "done";
+    item.result = data;
+  } catch (err) {
+    item.status = "error";
+    item.error = String(err.message || err);
+  }
+
+  renderTdQueue();
+}
 
 /* ---------- prompts panel ---------- */
-const PROMPTS=[
-  {key:"firewall", title:"Firewall / Fetch (Prompt A)", desc:"Run this in Claude with web search to get regime, news, and flagged tickers. Enter those into the scan controls."},
-  {key:"swingshort", title:"Swing Short (Prompt B)", desc:"For 3–7 DTE setups. Paste the 5-min copy blocks into this."},
-  {key:"swinglong", title:"Swing Long (Prompt C)", desc:"For 21–35 DTE swings. Paste the daily copy blocks into this."},
-  {key:"guide", title:"User Guide", desc:"Your reference notes for running the system."},
+const PROMPTS = [
+  { key:"firewall",   title:"Firewall / Fetch (Prompt A)",  desc:"Run this in Claude with web search to get regime, news, and flagged tickers. Enter those into the scan controls." },
+  { key:"swingshort", title:"Short Term Trade Desk (Prompt B)", desc:"3–7 DTE setups. Sent automatically from scan cards via the Trade Desk." },
+  { key:"swinglong",  title:"Swing Trade Desk (Prompt C)",   desc:"28–42 DTE swings. Sent automatically from scan cards via the Trade Desk." },
+  { key:"guide",      title:"User Guide",                    desc:"Your reference notes for running the system." },
 ];
+
 function buildPrompts(){
-  const c=$("#promptBlocks"); c.innerHTML="";
-  PROMPTS.forEach(p=>{
-    const div=document.createElement("div"); div.className="pblock";
-    div.innerHTML=`<h3>${p.title}</h3><p>${p.desc}</p>
+  const c = $("#promptBlocks"); c.innerHTML = "";
+  PROMPTS.forEach(p => {
+    const div = document.createElement("div"); div.className = "pblock";
+    div.innerHTML = `<h3>${p.title}</h3><p>${p.desc}</p>
       <textarea id="pt_${p.key}" placeholder="Paste your ${p.title} text here…">${escapeHtml(load("bs_prompt_"+p.key,""))}</textarea>
-      <div class="actions"><button class="ghost" data-save="${p.key}">Save</button><button class="ghost" data-copyp="${p.key}">Copy</button></div>`;
+      <div class="actions">
+        <button class="ghost" data-save="${p.key}">Save</button>
+        <button class="ghost" data-copyp="${p.key}">Copy</button>
+        <button class="ghost" data-openclaude>Open Claude</button>
+      </div>`;
     c.appendChild(div);
   });
-  c.querySelectorAll("[data-save]").forEach(b=>b.addEventListener("click",()=>{
-    store("bs_prompt_"+b.dataset.save, $("#pt_"+b.dataset.save).value); toast("Saved");
+
+  c.querySelectorAll("[data-save]").forEach(b => b.addEventListener("click", () => {
+    const key = b.dataset.save;
+    store("bs_prompt_" + key, $("#pt_" + key).value);
+    // Stamp timestamp only for Prompt A (firewall)
+    if (key === "firewall") store("bs_prompt_firewall_ts", Date.now().toString());
+    toast("Saved");
   }));
-  c.querySelectorAll("[data-copyp]").forEach(b=>b.addEventListener("click",()=>{
-    navigator.clipboard.writeText($("#pt_"+b.dataset.copyp).value).then(()=>toast("Copied"));
+
+  c.querySelectorAll("[data-copyp]").forEach(b => b.addEventListener("click", () => {
+    navigator.clipboard.writeText($("#pt_" + b.dataset.copyp).value).then(() => toast("Copied"));
+  }));
+
+  c.querySelectorAll("[data-openclaude]").forEach(b => b.addEventListener("click", () => {
+    window.open("https://claude.ai", "_blank");
   }));
 }
 buildPrompts();
