@@ -13,7 +13,7 @@
    ============================================================================ */
 
 const CLAUDE_MODEL = "claude-sonnet-4-6";
-const MAX_TOKENS   = 650; // tight per-stage limit — keeps each call fast
+const MAX_TOKENS   = 1000; // 26s Netlify timeout — room for detailed persona output
 
 const SHARED_HEADER = (ticker, mode) => {
   const dteRange  = mode === "short" ? "3–7 DTE"   : "28–42 DTE";
