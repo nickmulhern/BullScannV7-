@@ -13,7 +13,7 @@
 
 import { getStore } from "@netlify/blobs";
 
-const CLAUDE_MODEL = "claude-sonnet-4-6";
+const CLAUDE_MODEL = "claude-sonnet-5";
 const MAX_TOKENS   = 2000;
 
 const FIREWALL_PROMPT = `SCAN SETUP — FIREWALL (BullScann 7)
